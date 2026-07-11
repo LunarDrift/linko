@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -27,10 +28,15 @@ func main() {
 }
 
 func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir string) int {
-	logger, err := initializeLogger(os.Getenv("LINKO_LOG_FILE"))
+	logger, closeLogger, err := initializeLogger(os.Getenv("LINKO_LOG_FILE"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initalize logger: %v\n", err)
 	}
+	defer func() {
+		if err := closeLogger(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close logger: %v\n", err)
+		}
+	}()
 
 	st, err := store.New(dataDir, logger)
 	if err != nil {
@@ -59,14 +65,33 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	return 0
 }
 
-func initializeLogger(logFile string) (*log.Logger, error) {
+type closeFunc func() error
+
+func initializeLogger(logFile string) (*log.Logger, closeFunc, error) {
 	if logFile != "" {
 		file, err := os.OpenFile("linko.access.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open or create log file: %v", err)
+			return nil, nil, fmt.Errorf("failed to open or create log file: %v", err)
 		}
-		multiWriter := io.MultiWriter(os.Stderr, file)
-		return log.New(multiWriter, "", log.LstdFlags), nil
+
+		bufferedFile := bufio.NewWriterSize(file, 8192)
+		multiWriter := io.MultiWriter(os.Stderr, bufferedFile)
+		// for file logger -> close should flush the buffered writer and close the file
+		close := func() error {
+			if err := bufferedFile.Flush(); err != nil {
+				return fmt.Errorf("failed to flush log file: %v", err)
+			}
+			if err := file.Close(); err != nil {
+				return fmt.Errorf("failed to close log file: %v", err)
+			}
+			return nil
+		}
+		return log.New(multiWriter, "", log.LstdFlags), close, nil
 	}
-	return log.New(os.Stderr, "", log.LstdFlags), nil
+
+	// for stderr logger -> close return a no-op function that returns nil
+	close := func() error {
+		return nil
+	}
+	return log.New(os.Stderr, "", log.LstdFlags), close, nil
 }
