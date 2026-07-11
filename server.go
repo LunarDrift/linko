@@ -15,10 +15,11 @@ import (
 type server struct {
 	httpServer *http.Server
 	store      store.Store
+	logger     *log.Logger
 	cancel     context.CancelFunc
 }
 
-func newServer(store store.Store, port int, cancel context.CancelFunc) *server {
+func newServer(store store.Store, port int, logger *log.Logger, cancel context.CancelFunc) *server {
 	mux := http.NewServeMux()
 
 	srv := &http.Server{
@@ -29,6 +30,7 @@ func newServer(store store.Store, port int, cancel context.CancelFunc) *server {
 	s := &server{
 		httpServer: srv,
 		store:      store,
+		logger:     logger,
 		cancel:     cancel,
 	}
 
