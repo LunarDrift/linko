@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -12,8 +13,6 @@ import (
 
 	"boot.dev/linko/internal/store"
 )
-
-var logger = log.New(os.Stderr, "DEBUG: ", log.LstdFlags)
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -58,4 +57,16 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 		return 1
 	}
 	return 0
+}
+
+func initializeLogger(logFile string) (*log.Logger, error) {
+	if logFile != "" {
+		file, err := os.OpenFile("linko.access.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open or create log file: %v", err)
+		}
+		multiWriter := io.MultiWriter(os.Stderr, file)
+		return log.New(multiWriter, "", log.LstdFlags), nil
+	}
+	return log.New(os.Stderr, "", log.LstdFlags), nil
 }
