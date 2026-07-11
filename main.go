@@ -32,6 +32,8 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initalize logger: %v\n", err)
 	}
+	// defer func means that this function gets called when `run` returns
+	// ensures the log buffer gets flushed and the file closes when server stops
 	defer func() {
 		if err := closeLogger(); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to close logger: %v\n", err)
