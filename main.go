@@ -55,7 +55,7 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	logger.Debug("Linko is shutting down")
+	logger.Debug("linko is shutting down")
 	if err := s.shutdown(shutdownCtx); err != nil {
 		logger.Error(fmt.Sprintf("failed to shutdown server: %v", err))
 		return 1
