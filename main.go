@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"boot.dev/linko/internal/build"
 	"boot.dev/linko/internal/linkoerr"
 	"boot.dev/linko/internal/store"
 	pkgerr "github.com/pkg/errors"
@@ -34,6 +35,10 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initalize logger: %v\n", err)
 	}
+	logger = logger.With(
+		slog.String("git_sha", build.GitSHA),
+		slog.String("build_time", build.BuildTime),
+	)
 	// defer func means that this function gets called when `run` returns
 	// ensures the log buffer gets flushed and the file closes when server stops
 	defer func() {
