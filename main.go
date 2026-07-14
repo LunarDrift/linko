@@ -37,6 +37,7 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	}
 	env := os.Getenv("ENV")
 	hostname, _ := os.Hostname()
+
 	logger = logger.With(
 		slog.String("git_sha", build.GitSHA),
 		slog.String("build_time", build.BuildTime),
