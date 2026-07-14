@@ -35,9 +35,13 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initalize logger: %v\n", err)
 	}
+	env := os.Getenv("ENV")
+	hostname, _ := os.Hostname()
 	logger = logger.With(
 		slog.String("git_sha", build.GitSHA),
 		slog.String("build_time", build.BuildTime),
+		slog.String("env", env),
+		slog.String("hostname", hostname),
 	)
 	// defer func means that this function gets called when `run` returns
 	// ensures the log buffer gets flushed and the file closes when server stops
