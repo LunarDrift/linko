@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -26,7 +27,7 @@ func newServer(store store.Store, port int, logger *slog.Logger, cancel context.
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: requestLogger(logger)(mux),
+		Handler: requestID()(requestLogger(logger)(mux)),
 	}
 
 	s := &server{
@@ -120,6 +121,21 @@ func httpError(ctx context.Context, w http.ResponseWriter, status int, err error
 	http.Error(w, err.Error(), status)
 }
 
+func requestID() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			reqID := r.Header.Get("X-Request-ID")
+			if reqID == "" {
+				reqID = rand.Text()
+			}
+
+			w.Header().Set("X-Request-ID", reqID)
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -141,6 +157,7 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 				slog.Int("request_body_bytes", spyReader.bytesRead),
 				slog.Int("response_status", spyWriter.statusCode),
 				slog.Int("response_body_bytes", spyWriter.bytesWritten),
+				slog.String("request_id", spyWriter.Header().Get("X-Request-ID")),
 			}
 			if logContext.Username != "" {
 				attrs = append(attrs, slog.String("user", logContext.Username))
